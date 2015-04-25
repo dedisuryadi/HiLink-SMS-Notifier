@@ -32,39 +32,6 @@ Gosub, Refresh
 SetTimer, Refresh, %refreshInterval%
 return
 
-
-Refresh:
-	
-	; get latest inbox count
-	newValue := getInboxCount()	
-
-	if (newValue > oldValue)
-	{
-		; make oldValue new
-		oldValue := newValue
-		
-		; NOTIFY
-		Send {Volume_Down 30} ; add a cool fade effect
-		SoundPlay, %A_WinDir%\Media\Windows Ringout.wav ; ring ring
-		Notify("You've got new SMS", "click to open", 30, "AC=openInbox GC=000 TC=DADADA MC=878787 Image=16")
-		sleep 1000
-		Send {Volume_Up 30} ; normalize sound volume
-	}	
-	
-	return
-	
-	
-OpenInbox:
-
-	SetTitleMatchMode, 2
-	DetectHiddenWindows, on
-	
-	IfWinNotExist, HiLink -
-		run http://hi.link/html/smsinbox.html
-	else
-		WinActivate
-	return
-	
 	
 getInboxCount()
 {
@@ -73,8 +40,52 @@ getInboxCount()
 	HttpObj.Open("GET", "http://hi.link/api/sms/sms-count")
 	HttpObj.Send()
 	RegExMatch(HttpObj.ResponseText, "<LocalInbox>(\d+)</LocalInbox>", inbox)
+	HttpObj.quit
+	
 	return inbox1
 }
+
+
+Refresh:
+	
+	; get latest inbox count
+	newValue := getInboxCount()
+	
+	; detect deleted message
+	if (newValue < oldValue)
+	{	
+		Notify("SMS Deleted!", "You deleted " . oldValue-newValue . " messages"  , 10, "AC=openInbox GC=000 TC=DADADA MC=878787 Image=16")
+		
+		; update oldValue
+		oldValue := newValue
+	}
+
+	; detect new message
+	if (newValue > oldValue)
+	{		
+		; NOTIFY
+		SoundPlay, %A_WinDir%\Media\Windows Ringout.wav ; ring ring
+		Notify("You've got new SMS", "click to open", 35, "AC=openInbox GC=000 TC=DADADA MC=878787 Image=16")
+		
+		; make oldValue new
+		oldValue := newValue
+	}	
+	
+	return
+	
+	
+openInbox:
+
+	SetTitleMatchMode, 2
+	SetTitleMatchMode, Slow
+	
+	IfWinExist, HiLink -
+		WinActivate
+	else
+	{
+		run http://hi.link/html/smsinbox.html
+	}	
+	return
 
   
 CapsLock & s::
